@@ -1,3 +1,6 @@
+# PollutionImpactOnSolar
+Solar Power Prediction based on Air Pollution
+
 # Overview
 Proyek ini mengintegrasikan data kualitas udara dan data meteorologi untuk:
 - Mengumpulkan data PM2.5 dari OpenAQ
