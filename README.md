@@ -1,75 +1,196 @@
-<h1 align="center">☀️ Pollution Impact on Solar Energy Generation (Bali)</h1>
+# Overview
+Proyek ini mengintegrasikan data kualitas udara dan data meteorologi untuk:
+- Mengumpulkan data PM2.5 dari OpenAQ
+- Mengumpulkan data cuaca dan radiasi matahari dari Open-Meteo
+- Melakukan simulasi performa panel surya
+- Menyimpan hasil ke PostgreSQL
+- Menyediakan dashboard analitik menggunakan Streamlit
 
-<p align="center">
-  <em>Sistem analisis, pemodelan, dan simulasi dampak polusi udara terhadap kinerja dan efisiensi panel surya (Photovoltaic).</em>
-</p>
+# Architecture
+<img width="325" height="800" alt="image" src="https://github.com/user-attachments/assets/0db60756-422b-4031-b05c-b54868b633e4" />
 
-<hr>
+# ETL Flow
+## 1. Extract
+### Air Quality Data
+Source:
+- OpenAQ API v3
+- CSV Fallback (`data_lengkap_bali_ubud.csv`)
 
-<h2 align="left">📖 Tentang Proyek Ini</h2>
-<p align="justify">
-  Proyek <strong><code>PollutionImpactOnSolar</code></strong> adalah sebuah sistem berbasis Python yang dirancang untuk menganalisis dan mengkuantifikasi seberapa besar kerugian efisiensi yang dialami oleh panel surya akibat polusi udara. Berdasarkan struktur modulnya, proyek ini difokuskan pada studi kasus di wilayah <strong>Bali</strong>. 
-</p>
-<p align="justify">
-  Program ini berjalan secara <em>end-to-end</em>, mulai dari pengumpulan data mentah kondisi atmosfer (cuaca dan polutan), pemrosesan simulasi daya energi surya, hingga visualisasi hasil analisis melalui sebuah sistem <em>dashboard</em> interaktif.
-</p>
+Collected Parameters:
+- PM1
+- PM2.5
+- Humidity
+- Temperature
+- UM003
 
-<br>
+### Weather Data
+Source:
+- Open-Meteo Archive API
 
-<h2 align="left">📊 Jenis Data & Proses ETL</h2>
-<p align="justify">
-  Sistem ini mengelola beberapa sumber data yang berbeda dan mengintegrasikannya menggunakan <em>pipeline</em> ETL (<strong>Extract, Transform, Load</strong>) tersendiri agar dapat dibaca oleh algoritma simulasi.
-</p>
+Collected Parameters:
+- Direct Normal Irradiance (DNI)
+- Diffuse Radiation
+- Shortwave Radiation
+- Temperature
+- Cloud Cover
+- Humidity
+- Precipitation
 
-<h3 align="left">🗂️ Jenis Data yang Digunakan:</h3>
-<ul>
-  <li>
-    <strong>Data Kualitas Udara (Polusi):</strong> Diambil dan dikelola melalui modul <code>openaqbali.py</code>. Modul ini bertugas menarik parameter polutan udara secara dinamis (seperti PM2.5, PM10) melalui API.
-  </li>
-  <li>
-    <strong>Data Meteorologi (Cuaca):</strong> Dikelola oleh modul <code>meteobali.py</code>. Data ini mencakup parameter atmosfer yang memengaruhi besaran radiasi matahari, seperti suhu, kelembapan, dan persentase tutupan awan.
-  </li>
-  <li>
-    <strong>Data Simulasi PV:</strong> Dihasilkan oleh modul <code>pv_simulation.py</code>, yang berisi model matematis/fisika untuk menghitung seberapa banyak energi listrik (Watt) yang mampu diproduksi oleh panel surya berdasarkan parameter cuaca dan tingkat polusi saat itu.
-  </li>
-</ul>
+## 2. Transform & Simulate
+### Data Processing
+- Timestamp synchronization
+- Timezone conversion
+- Missing value handling
+- Dataset merging
+- Hourly resampling
 
-<h3 align="left">⚙️ Alur Kerja ETL (<code>pv_etl_pipeline.py</code>):</h3>
-<p align="justify">
-  Proses otomatisasi data dijalankan dengan tahapan sebagai berikut:
-</p>
-<ol>
-  <li>
-    <strong>Extract:</strong> Menarik <em>raw data</em> dari berbagai sumber (API cuaca dan kualitas udara) pada rentang waktu tertentu.
-  </li>
-  <li>
-    <strong>Transform:</strong> Membersihkan data dari nilai kosong (<em>null</em>), menyelaraskan zona waktu (<em>timestamp</em>), dan menggabungkan variabel polusi dengan metrik cuaca agar menjadi satu dataset komprehensif.
-  </li>
-  <li>
-    <strong>Load:</strong> Memuat hasil data yang sudah bersih dan terstruktur ke dalam penyimpanan final, yang selanjutnya divisualisasikan oleh modul antarmuka <code>dashboardbali_upgrade.py</code>.
-  </li>
-</ol>
+### Missing Value Strategy
+| Variable | Handling |
+|-----------|-----------|
+| PM2.5 | Fill with 0 |
+| DNI | Fill with 0 |
+| DHI | Fill with 0 |
 
-<br>
+### PV Simulation
+Generated Features:
+- Solar Position
+- Angle of Incidence (AOI)
+- POA Irradiance
+- Cell Temperature
+- Simulated Power Output
 
-<h2 align="left">🚨 Urgensi Pembuatan Proyek</h2>
-<p align="justify">
-  Dalam operasional Pembangkit Listrik Tenaga Surya (PLTS), keberadaan partikel debu dan polutan di udara dapat menghalangi datangnya radiasi matahari (<em>atmospheric scattering</em>) atau menumpuk pada permukaan panel (<em>soiling effect</em>). Urgensi dan tujuan utama dari proyek ini meliputi:
-</p>
-<ul>
-  <li>
-    <strong>Akurasi Prediksi Daya:</strong> Prediksi produksi energi sering kali meleset (<em>overestimate</em>) jika hanya mengandalkan prediksi cuaca cerah tanpa memperhitungkan kabut/jerebu akibat polusi. Sistem ini memberikan estimasi yang jauh lebih realistis.
-  </li>
-  <li>
-    <strong>Optimalisasi Jadwal <em>Maintenance</em>:</strong> Dengan melacak tren polusi, operator PLTS dapat memprediksi tingkat kekotoran panel surya. Hal ini memungkinkan penjadwalan pembersihan panel secara presisi guna mencegah penurunan daya dan memangkas biaya operasional.
-  </li>
-  <li>
-    <strong>Perencanaan Energi Berkelanjutan:</strong> Khusus untuk wilayah pariwisata ekologis seperti Bali, analisis ini sangat vital bagi para pembuat kebijakan maupun investor dalam menghitung kelayakan ekonomi infrastruktur energi surya di tengah dinamika kualitas udara lokal.
-  </li>
-</ul>
+## 3. Load
+Target Database:
+```text
+PostgreSQL
+Database : pv_analysis_db
+Table    : hourly_pv_data
+```
 
-<hr>
+Loading Method:
+```python
+df.to_sql(
+    "hourly_pv_data",
+    engine,
+    if_exists="replace",
+    index=False,
+    method="multi"
+)
+```
 
-<p align="center">
-  <small>Dibuat untuk kebutuhan analisis data spasial, teknik sistem tertanam, dan pelestarian energi terbarukan.</small>
-</p>
+## 4. Analyze
+Dashboard Features:
+- Time-series visualization
+- PM2.5 vs DNI scatter plot
+- Pearson correlation
+- Linear regression
+- Cloud cover filtering
+- Daylight filtering
+
+# Fault Tolerance
+## OpenAQ API Failure Handling
+When OpenAQ API returns:
+```text
+HTTP 410 Gone
+```
+
+Pipeline automatically switches to:
+```text
+data_lengkap_bali_ubud.csv
+```
+
+This ensures ETL execution continues without interruption.
+
+# Database Schema
+## hourly_pv_data
+| Column | Type |
+|----------|----------|
+| timestamp | TIMESTAMP |
+| pm25 | NUMERIC |
+| direct_normal_irradiance | NUMERIC |
+| cloud_cover | NUMERIC |
+| temperature_2m | NUMERIC |
+| poa_irradiance | NUMERIC |
+| simulated_power_watt | NUMERIC |
+
+# File Description
+## pv_etl_pipeline.py
+Main ETL orchestration script.
+Responsibilities:
+- Extract
+- Transform
+- Simulate
+- Load
+
+## openaqbali.py
+OpenAQ ingestion module.
+
+Features:
+- Sensor pagination
+- Timestamp conversion
+- CSV fallback
+
+## meteobali.py
+Open-Meteo ingestion module.
+
+Features:
+- Historical weather retrieval
+- Radiation dataset extraction
+- Retry mechanism
+- Request caching
+
+## pv_simulation.py
+PV performance simulation engine.
+
+Calculates:
+- Solar Position
+- AOI
+- POA Irradiance
+- Cell Temperature
+- Power Output
+
+## dashboardbali_upgrade.py
+Streamlit analytics dashboard.
+
+Features:
+- Interactive visualization
+- Correlation analysis
+- Linear regression
+- Trend monitoring
+
+# Technologies
+| Component | Technology |
+|------------|------------|
+| Language | Python |
+| ETL | Pandas |
+| Numerical Computing | NumPy |
+| Weather API | Open-Meteo |
+| Air Quality API | OpenAQ |
+| Database | PostgreSQL |
+| ORM | SQLAlchemy |
+| Driver | psycopg2 |
+| Dashboard | Streamlit |
+| Visualization | Plotly |
+
+# Limitations
+- OpenAQ API availability is unstable
+- Single-location simulation only
+- Hourly weather resolution
+- Simplified isotropic irradiance model
+- Does not implement Perez transposition model
+
+# Future Improvements
+- Apache Airflow orchestration
+- Automated scheduling with Cron
+- Multi-location analysis
+- Advanced PV models
+- Real-time streaming ingestion
+
+# Authors
+- Faris Arinanta 235150300111045
+- Achmad Fiky Akbar 235150301111043
+- Adhitya Noer Effendi 235150307111024
+- Irham Dzaki Alfaruq 235150307111025
+- Fadlan Umar Rozikin 235150307111032
+- Ahmad Tsaqif 235150307111046
+
